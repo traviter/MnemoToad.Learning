@@ -1,0 +1,4 @@
+GRANT USAGE ON SCHEMA public TO mnemotoad_learning_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO mnemotoad_learning_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO mnemotoad_learning_app;

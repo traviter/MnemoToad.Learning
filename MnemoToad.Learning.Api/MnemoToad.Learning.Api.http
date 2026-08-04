@@ -1,0 +1,6 @@
+@MnemoToad.Learning.Api_HostAddress = http://localhost:5075
+
+GET {{MnemoToad.Learning.Api_HostAddress}}/health
+Accept: application/json
+
+###

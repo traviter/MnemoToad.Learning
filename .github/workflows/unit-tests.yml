@@ -1,0 +1,25 @@
+name: Unit Tests
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  TEST_PROJECT: MnemoToad.Learning.Tests/MnemoToad.Learning.Tests.csproj
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Run unit tests
+        run: dotnet test ${{ env.TEST_PROJECT }} --configuration Release

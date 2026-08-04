@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="MnemoToad.Learning.Api/MnemoToad.Learning.Api.csproj" />
+  <Project Path="MnemoToad.Learning.Data/MnemoToad.Learning.Data.csproj" />
+  <Project Path="MnemoToad.Learning.DbMigrator/MnemoToad.Learning.DbMigrator.csproj" />
+  <Project Path="MnemoToad.Learning.Tests/MnemoToad.Learning.Tests.csproj" />
+</Solution>

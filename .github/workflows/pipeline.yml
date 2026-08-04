@@ -1,0 +1,91 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write   # required for the Azure OIDC login steps inside deploy-api.yml / restart-api.yml
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      data: ${{ steps.filter.outputs.data }}
+      karate: ${{ steps.filter.outputs.karate }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Detect changed areas
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'MnemoToad.Learning.Api/**'
+              - 'MnemoToad.Learning.Data/**'
+            data:
+              - 'MnemoToad.Learning.DbMigrator/**'
+            karate:
+              - 'MnemoToad.Learning.Karate/**'
+
+  build:
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    uses: ./.github/workflows/build-api.yml
+
+  unit-tests:
+    needs: [changes, build]
+    if: |
+      always() && !cancelled() &&
+      needs.changes.outputs.api == 'true' &&
+      needs.build.result == 'success'
+    uses: ./.github/workflows/unit-tests.yml
+
+  migrate:
+    needs: [changes, build, unit-tests]
+    if: |
+      always() && !cancelled() &&
+      (needs.changes.outputs.api == 'true' || needs.changes.outputs.data == 'true') &&
+      (needs.build.result == 'success' || needs.build.result == 'skipped') &&
+      (needs['unit-tests'].result == 'success' || needs['unit-tests'].result == 'skipped')
+    uses: ./.github/workflows/db-deploy.yml
+    secrets: inherit
+
+  deploy:
+    needs: [changes, migrate]
+    if: |
+      always() && !cancelled() &&
+      needs.changes.outputs.api == 'true' &&
+      needs.migrate.result == 'success'
+    uses: ./.github/workflows/deploy-api.yml
+    secrets: inherit
+
+  restart-api:
+    needs: [changes, migrate]
+    if: |
+      always() && !cancelled() &&
+      needs.changes.outputs.data == 'true' &&
+      needs.changes.outputs.api != 'true' &&
+      needs.migrate.result == 'success'
+    uses: ./.github/workflows/restart-api.yml
+    secrets: inherit
+
+  karate:
+    needs: [changes, build, unit-tests, migrate, deploy, restart-api]
+    if: |
+      always() && !cancelled() &&
+      (needs.changes.outputs.api == 'true' || needs.changes.outputs.data == 'true' || needs.changes.outputs.karate == 'true') &&
+      needs.build.result != 'failure' &&
+      needs['unit-tests'].result != 'failure' &&
+      needs.migrate.result != 'failure' &&
+      needs.deploy.result != 'failure' &&
+      needs['restart-api'].result != 'failure'
+    uses: ./.github/workflows/karate.yml
+    with:
+      tags: ''
+      environment: azure

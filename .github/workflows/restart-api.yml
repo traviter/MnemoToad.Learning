@@ -1,0 +1,51 @@
+name: Restart API
+
+on:
+  workflow_call:
+    secrets:
+      AZURE_CLIENT_ID:
+        required: true
+      AZURE_TENANT_ID:
+        required: true
+      AZURE_SUBSCRIPTION_ID:
+        required: true
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: mnemotoad-learning
+
+jobs:
+  restart:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # required for OIDC login to Azure
+      contents: read
+
+    steps:
+      - name: Log in to Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Restart Azure Web App
+        run: |
+          RESOURCE_GROUP=$(az webapp list --query "[?name=='${{ env.AZURE_WEBAPP_NAME }}'].resourceGroup" -o tsv)
+          az webapp restart --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group "$RESOURCE_GROUP"
+
+      - name: Wait for App Service to be healthy
+        run: |
+          hostname=$(az webapp list --query "[?name=='${AZURE_WEBAPP_NAME}'].defaultHostName" -o tsv)
+          url="https://${hostname}/health"
+          echo "Polling $url"
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error --max-time 10 "$url" -o /dev/null; then
+              echo "App is healthy (attempt $attempt)."
+              exit 0
+            fi
+            echo "Not healthy yet (attempt $attempt/30), retrying in 10s..."
+            sleep 10
+          done
+          echo "App did not become healthy in time."
+          exit 1

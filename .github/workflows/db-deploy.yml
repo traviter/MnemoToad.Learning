@@ -1,0 +1,25 @@
+name: Apply Database Migrations
+
+on:
+  workflow_call:
+    secrets:
+      DB_ADMIN_CONNECTION_STRING:
+        required: true
+  workflow_dispatch:
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Run DbUp migrator
+        env:
+          DB_ADMIN_CONNECTION_STRING: ${{ secrets.DB_ADMIN_CONNECTION_STRING }}
+        run: dotnet run --project MnemoToad.Learning.DbMigrator

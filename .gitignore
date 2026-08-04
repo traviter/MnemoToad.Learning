@@ -1,0 +1,43 @@
+## User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+## Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Xx]64/
+[Xx]84/
+bbin/
+bin/
+obj/
+/Generated_Code/
+
+## Tooling and IDEs
+.vs/
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln.docstates
+
+## Publish output
+*.publish.xml
+*.pubxml
+*.pubxml.user
+
+## Testing and Code Coverage
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+
+## User Secrets & Local Configuration
+appsettings.Development.json
+appsettings.Local.json
+[Log]/
+*.log

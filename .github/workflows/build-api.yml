@@ -1,0 +1,40 @@
+name: Build API
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  API_PROJECT: MnemoToad.Learning.Api/MnemoToad.Learning.Api.csproj
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore ${{ env.API_PROJECT }}
+
+      - name: Build
+        run: dotnet build ${{ env.API_PROJECT }} --configuration Release --no-restore
+
+      - name: Clean publish folder
+        run: rm -rf ${{ github.workspace }}/publish
+
+      - name: Publish
+        run: dotnet publish ${{ env.API_PROJECT }} -c Release -o ${{ github.workspace }}/publish
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: webapp
+          path: ${{ github.workspace }}/publish
