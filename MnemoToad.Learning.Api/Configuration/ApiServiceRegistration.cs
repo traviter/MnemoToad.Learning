@@ -1,11 +1,12 @@
 using Microsoft.EntityFrameworkCore;
+using MnemoToad.Learning.Api.Swagger;
 using MnemoToad.Learning.Data;
 
 namespace MnemoToad.Learning.Api.Configuration;
 
-public static class ServiceCollectionExtensions
+public static class ApiServiceRegistration
 {
-    public static IServiceCollection AddApiServices(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddApiServices(IServiceCollection services, IConfiguration configuration)
     {
         // Wires up routing/model-binding/action-invocation for [ApiController] classes.
         services.AddControllers();
@@ -14,12 +15,16 @@ public static class ServiceCollectionExtensions
         services.AddEndpointsApiExplorer();
         // Registers the OpenAPI document generator (built from the explorer data above).
         // Nothing is written to disk here — the JSON is generated in memory per-request by
-        // app.UseSwagger() below, only when running in Development.
+        // app.UseSwagger() below. Configuration lives in SwaggerGenOptionsSetup.
+        services.ConfigureOptions<SwaggerGenOptionsSetup>();
         services.AddSwaggerGen();
 
         services.AddDbContext<AppDbContext>(options =>
             options.UseNpgsql(configuration.GetConnectionString("Default")).UseSnakeCaseNamingConvention());
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
+
+        services.AddHealthChecks()
+            .AddNpgSql(configuration.GetConnectionString("Default")!, name: "database");
 
         return services;
     }
