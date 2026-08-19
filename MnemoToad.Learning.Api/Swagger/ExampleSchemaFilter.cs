@@ -2,6 +2,7 @@ using System.Text.Json.Nodes;
 using Microsoft.OpenApi;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using MnemoToad.Learning.Api.Contracts;
+using MnemoToad.Learning.Data.Entities;
 
 namespace MnemoToad.Learning.Api.Swagger;
 
@@ -16,7 +17,7 @@ public class ExampleSchemaFilter : ISchemaFilter
             ["name"] = "World Capitals",
             ["description"] = "Country name on the front, capital city on the back.",
         },
-        [typeof(LeitnerDeckResponse)] = () => new JsonObject
+        [typeof(LeitnerDeck)] = () => new JsonObject
         {
             ["id"] = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
             ["name"] = "World Capitals",

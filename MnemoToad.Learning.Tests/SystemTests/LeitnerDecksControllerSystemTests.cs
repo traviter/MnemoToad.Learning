@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using MnemoToad.Learning.Api.Contracts;
+using MnemoToad.Learning.Data.Entities;
 using MnemoToad.Learning.Tests.TestSupport;
 using NUnit.Framework;
 using System.Net;
@@ -7,12 +9,6 @@ using System.Net.Http.Json;
 
 namespace MnemoToad.Learning.Tests.SystemTests;
 
-// Encodes the LeitnerDeck API's target behavior against the real HTTP pipeline, per the approved
-// Swagger contract — LeitnerDecksController currently stubs every action with 501, so these are
-// expected to fail (red) until the persistence layer (entity/repository/DbContext) lands in a
-// later phase. There's no DbContext seeding here (unlike NodeTypesControllerSystemTests, which
-// seeds via MockableAppDbContext) since no LeitnerDeck entity exists yet — setup goes through the
-// HTTP API itself (Create) instead.
 [TestFixture]
 public class LeitnerDecksControllerSystemTests
 {
@@ -45,12 +41,12 @@ public class LeitnerDecksControllerSystemTests
     public async Task Create_ThenGetById_RoundTripsThroughTheRealStack()
     {
         var createResponse = await _client.PostAsJsonAsync("/leitner/decks", new LeitnerDeckRequest("World Capitals", "Country name on the front, capital city on the back."));
-        var created = await createResponse.Content.ReadFromJsonAsync<LeitnerDeckResponse>();
+        var created = await createResponse.Content.ReadFromJsonAsync<LeitnerDeck>();
 
         var getResponse = await _client.GetAsync($"/leitner/decks/{created!.Id}");
 
         Assert.That(getResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        var fetched = await getResponse.Content.ReadFromJsonAsync<LeitnerDeckResponse>();
+        var fetched = await getResponse.Content.ReadFromJsonAsync<LeitnerDeck>();
         Assert.That(fetched!.Name, Is.EqualTo("World Capitals"));
     }
 
@@ -74,8 +70,8 @@ public class LeitnerDecksControllerSystemTests
 
         Assert.That(firstResponse.StatusCode, Is.EqualTo(HttpStatusCode.Created));
         Assert.That(secondResponse.StatusCode, Is.EqualTo(HttpStatusCode.Created));
-        var first = await firstResponse.Content.ReadFromJsonAsync<LeitnerDeckResponse>();
-        var second = await secondResponse.Content.ReadFromJsonAsync<LeitnerDeckResponse>();
+        var first = await firstResponse.Content.ReadFromJsonAsync<LeitnerDeck>();
+        var second = await secondResponse.Content.ReadFromJsonAsync<LeitnerDeck>();
         Assert.That(first!.Id, Is.Not.EqualTo(second!.Id));
     }
 
@@ -98,13 +94,11 @@ public class LeitnerDecksControllerSystemTests
     [Test]
     public async Task Delete_WhenExists_Returns204AndRemovesIt()
     {
-        var createResponse = await _client.PostAsJsonAsync("/leitner/decks", new LeitnerDeckRequest("World Capitals", null));
-        var created = await createResponse.Content.ReadFromJsonAsync<LeitnerDeckResponse>();
+        var leitnerDeck = await _factory.Db.CreateLeitnerDeckAsync();
 
-        var deleteResponse = await _client.DeleteAsync($"/leitner/decks/{created!.Id}");
+        var deleteResponse = await _client.DeleteAsync($"/leitner/decks/{leitnerDeck.Id}");
 
         Assert.That(deleteResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
-        var getResponse = await _client.GetAsync($"/leitner/decks/{created.Id}");
-        Assert.That(getResponse.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        Assert.That(await _factory.Db.LeitnerDeck.AsNoTracking().FirstOrDefaultAsync(d => d.Id == leitnerDeck.Id), Is.Null);
     }
 }

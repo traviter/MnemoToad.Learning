@@ -1,5 +1,16 @@
 # MnemoToad.Learning — Project Conventions
 
+## Claude execution boundaries
+
+Claude never runs, under any circumstance, without the user's explicit go-ahead in that specific
+moment (no standing permission, doesn't carry forward turn-to-turn): `dotnet test`, any built C#
+executable/library (the API project, the DbMigrator, any other service's exe — this includes
+`dotnet run`, indirectly starting the API via a browser preview tool, etc.), any DB migration
+against any database including a local docker-compose one, and Karate. Karate specifically is also
+not runnable regardless of policy — there is no Maven access in this environment. `dotnet build` is
+the one exception: fine to run unprompted as normal post-edit verification. The user runs
+everything else (tests, migrations, the API server, Karate) and reports results back.
+
 ## Relationship to MnemoToad.Knowledge
 
 This repo was scaffolded from [traviter/MnemoToad.Knowledge](https://github.com/traviter/MnemoToad.Knowledge),
