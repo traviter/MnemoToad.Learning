@@ -31,9 +31,7 @@ public class LeitnerDecksController : ControllerBase
     /// <summary>Creates a new LeitnerDeck.</summary>
     /// <param name="request">The name and optional description for the new deck.</param>
     /// <response code="201">The created LeitnerDeck.</response>
-    /// <response code="400">
-    /// <c>Name</c> was missing, or a LeitnerDeck with that name already exists.
-    /// </response>
+    /// <response code="400"><c>Name</c> was missing.</response>
     [HttpPost]
     [ProducesResponseType(typeof(LeitnerDeckResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -44,9 +42,7 @@ public class LeitnerDecksController : ControllerBase
     /// <param name="id">The deck's id.</param>
     /// <param name="request">The deck's new name and optional description.</param>
     /// <response code="200">The updated LeitnerDeck.</response>
-    /// <response code="400">
-    /// <c>Name</c> was missing, or another LeitnerDeck already has that name.
-    /// </response>
+    /// <response code="400"><c>Name</c> was missing.</response>
     /// <response code="404">No LeitnerDeck exists with that id.</response>
     [HttpPut("{id:guid}")]
     [ProducesResponseType(typeof(LeitnerDeckResponse), StatusCodes.Status200OK)]
