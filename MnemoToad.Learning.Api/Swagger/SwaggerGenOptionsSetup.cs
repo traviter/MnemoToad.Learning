@@ -19,5 +19,7 @@ public class SwaggerGenOptionsSetup : IConfigureOptions<SwaggerGenOptions>
         // are returned directly as responses, no separate response DTOs) drives these files.
         options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, "MnemoToad.Learning.Api.xml"));
         options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, "MnemoToad.Learning.Data.xml"));
+
+        options.SchemaFilter<ExampleSchemaFilter>();
     }
 }

@@ -1,5 +1,16 @@
 # MnemoToad.Learning — Project Conventions
 
+## Claude execution boundaries
+
+Claude never runs, under any circumstance, without the user's explicit go-ahead in that specific
+moment (no standing permission, doesn't carry forward turn-to-turn): `dotnet test`, any built C#
+executable/library (the API project, the DbMigrator, any other service's exe — this includes
+`dotnet run`, indirectly starting the API via a browser preview tool, etc.), any DB migration
+against any database including a local docker-compose one, and Karate. Karate specifically is also
+not runnable regardless of policy — there is no Maven access in this environment. `dotnet build` is
+the one exception: fine to run unprompted as normal post-edit verification. The user runs
+everything else (tests, migrations, the API server, Karate) and reports results back.
+
 ## Relationship to MnemoToad.Knowledge
 
 This repo was scaffolded from [traviter/MnemoToad.Knowledge](https://github.com/traviter/MnemoToad.Knowledge),
@@ -77,3 +88,13 @@ Append-only/never-renumber-an-applied-script discipline still applies from here 
 CLAUDE.md "Database" section for the full rule). DB/role bootstrap (`CREATE DATABASE`,
 `CREATE ROLE`) is a manual `psql` step per environment, same as Knowledge — not a DbUp script (see
 `Bootstrap/CreateDatabaseAndRoles.sql`).
+
+**Sequence still matters, even though a retired/open number isn't sacred** — DbUp runs scripts in
+filename order, so a script touching a table must sort *after* that table's `CREATE TABLE` script
+or a fresh environment fails the first time migrations run. Grant/role scripts (like this repo's
+`001_GrantAppUserPrivileges.sql`) are the one case that's safe to place early, since they operate on
+roles/privileges rather than any table and have no ordering dependency on table-creation scripts.
+Knowledge hit this exact mistake once (a `properties jsonb` column on `knowledge_node` first
+numbered into an open early slot, without checking the table it altered wasn't created until a
+later script — see Knowledge's CLAUDE.md "Database" section for the full story) — don't assume an
+open-numbered gap here is safe to fill without checking what it would need to already exist first.

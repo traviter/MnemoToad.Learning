@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using MnemoToad.Learning.Api.Swagger;
 using MnemoToad.Learning.Data;
+using MnemoToad.Learning.Data.Configuration;
 
 namespace MnemoToad.Learning.Api.Configuration;
 
@@ -25,6 +26,8 @@ public static class ApiServiceRegistration
 
         services.AddHealthChecks()
             .AddNpgSql(configuration.GetConnectionString("Default")!, name: "database");
+
+        DataServiceRegistration.AddDataServices(services);
 
         return services;
     }
