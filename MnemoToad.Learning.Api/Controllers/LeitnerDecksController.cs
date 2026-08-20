@@ -66,9 +66,9 @@ public class LeitnerDecksController : ControllerBase
         return updated is not null ? Ok(updated) : NotFound();
     }
 
-    /// <summary>Deletes a LeitnerDeck.</summary>
+    /// <summary>Deletes a LeitnerDeck. Also deletes every LeitnerCard in the deck.</summary>
     /// <param name="id">The deck's id.</param>
-    /// <response code="204">The LeitnerDeck was deleted.</response>
+    /// <response code="204">The LeitnerDeck, and all LeitnerCards in it, were deleted.</response>
     /// <response code="404">No LeitnerDeck exists with that id.</response>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

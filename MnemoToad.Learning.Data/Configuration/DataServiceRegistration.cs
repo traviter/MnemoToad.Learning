@@ -8,6 +8,7 @@ public static class DataServiceRegistration
     public static IServiceCollection AddDataServices(IServiceCollection services)
     {
         services.AddScoped<ILeitnerDeckRepository, LeitnerDeckRepository>();
+        services.AddScoped<ILeitnerCardRepository, LeitnerCardRepository>();
         return services;
     }
 }
