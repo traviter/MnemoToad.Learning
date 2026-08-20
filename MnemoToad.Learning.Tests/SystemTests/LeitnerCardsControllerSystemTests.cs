@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using MnemoToad.Learning.Api.Contracts;
 using MnemoToad.Learning.Data.Entities;
 using MnemoToad.Learning.Tests.TestSupport;
@@ -345,7 +346,6 @@ public class LeitnerCardsControllerSystemTests
         var deleteResponse = await _client.DeleteAsync($"/leitner/cards/{cardId}");
 
         Assert.That(deleteResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
-        var getResponse = await _client.GetAsync($"/leitner/cards/{cardId}");
-        Assert.That(getResponse.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        Assert.That(await _factory.Db.LeitnerCard.AsNoTracking().FirstOrDefaultAsync(c => c.Id == cardId), Is.Null);
     }
 }

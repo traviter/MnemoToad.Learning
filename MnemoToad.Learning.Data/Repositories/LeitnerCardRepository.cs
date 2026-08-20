@@ -70,7 +70,7 @@ public class LeitnerCardRepository : ILeitnerCardRepository
     {
         var properties = new JsonObject();
         foreach (var face in faces)
-            properties[face.PropertyPath] = face.Content;
+            properties[face.PropertyPath] = face.Content.DeepClone();
         return properties;
     }
 }
