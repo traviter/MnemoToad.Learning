@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using MnemoToad.Learning.Api.Contracts;
+using MnemoToad.Learning.Data.Entities;
+using MnemoToad.Learning.Data.Repositories;
 using System.ComponentModel.DataAnnotations;
 
 namespace MnemoToad.Learning.Api.Controllers;
@@ -13,6 +15,15 @@ namespace MnemoToad.Learning.Api.Controllers;
 [Route("leitner/cards")]
 public class LeitnerCardsController : ControllerBase
 {
+    private readonly ILeitnerCardRepository _cardRepository;
+    private readonly ILeitnerDeckRepository _deckRepository;
+
+    public LeitnerCardsController(ILeitnerCardRepository cardRepository, ILeitnerDeckRepository deckRepository)
+    {
+        _cardRepository = cardRepository;
+        _deckRepository = deckRepository;
+    }
+
     /// <summary>Bulk-creates LeitnerCards into a single LeitnerDeck.</summary>
     /// <remarks>Each card's <c>NodeId</c> is optional — omit it for a manually-authored card with no Knowledge link.</remarks>
     /// <param name="request">The target deck and the cards to create.</param>
@@ -25,8 +36,23 @@ public class LeitnerCardsController : ControllerBase
     [ProducesResponseType(typeof(LeitnerCardsBulkCreateResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public IActionResult Create(LeitnerCardsBulkCreateRequest request) =>
-        StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<IActionResult> Create(LeitnerCardsBulkCreateRequest request)
+    {
+        if (await _deckRepository.GetByIdAsync(request.DeckId!.Value) is null) return NotFound();
+
+        var cards = request.Cards.Select(c => new LeitnerCard
+        {
+            DeckId = request.DeckId.Value,
+            NodeId = c.NodeId,
+            Properties = c.Properties,
+            BoxNumber = 0,
+            DueUtc = DateTime.UtcNow,
+            LastReviewedUtc = null
+        }).ToList();
+
+        var created = await _cardRepository.CreateManyAsync(cards);
+        return StatusCode(StatusCodes.Status201Created, new LeitnerCardsBulkCreateResponse(created));
+    }
 
     /// <summary>Lists every LeitnerCard in a deck.</summary>
     /// <param name="deckId">The id of the LeitnerDeck to list cards for. Required.</param>
@@ -34,21 +60,25 @@ public class LeitnerCardsController : ControllerBase
     /// <response code="400"><c>deckId</c> was missing or not a valid GUID.</response>
     /// <response code="404">No LeitnerDeck exists with that id.</response>
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<LeitnerCardResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(IEnumerable<LeitnerCard>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public IActionResult GetByDeck([FromQuery, Required] Guid? deckId) =>
-        StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<IActionResult> GetByDeck([FromQuery, Required] Guid? deckId)
+    {
+        var cards = await _cardRepository.GetByDeckAsync(deckId!.Value);
+        if (cards.Count == 0 && await _deckRepository.GetByIdAsync(deckId.Value) is null) return NotFound();
+        return Ok(cards);
+    }
 
     /// <summary>Gets a single LeitnerCard by id.</summary>
     /// <param name="id">The card's id.</param>
     /// <response code="200">The matching LeitnerCard.</response>
     /// <response code="404">No LeitnerCard exists with that id.</response>
     [HttpGet("{id:guid}")]
-    [ProducesResponseType(typeof(LeitnerCardResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(LeitnerCard), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public IActionResult GetById(Guid id) =>
-        StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<IActionResult> GetById(Guid id) =>
+        await _cardRepository.GetByIdAsync(id) is { } card ? Ok(card) : NotFound();
 
     /// <summary>Deletes a single LeitnerCard. Cascades to any associated property data.</summary>
     /// <param name="id">The card's id.</param>
@@ -57,6 +87,6 @@ public class LeitnerCardsController : ControllerBase
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public IActionResult Delete(Guid id) =>
-        StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<IActionResult> Delete(Guid id) =>
+        await _cardRepository.DeleteAsync(id) ? NoContent() : NotFound();
 }

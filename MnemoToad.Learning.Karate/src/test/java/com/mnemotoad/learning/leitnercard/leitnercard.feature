@@ -57,6 +57,24 @@ Feature: LeitnerCard API
     * eval leitnerCardFixtures.stageForCleanup(response.cards[0].id)
     * eval leitnerCardFixtures.stageForCleanup(response.cards[1].id)
 
+  Scenario: Properties come back in the order they were submitted
+    * def deck = createLeitnerDeck()
+    * def properties = { '#flag': { id: java.util.UUID.randomUUID() + '', alt_text: 'The flag of France' }, _canonicalName: 'France', '.population': 68000000 }
+    Given path 'leitner/cards'
+    And request { deckId: '#(deck.response.id)', cards: [{ properties: '#(properties)' }] }
+    When method post
+    Then status 201
+    * def createKeys = Object.keys(response.cards[0].properties)
+    And match createKeys == ['#flag', '_canonicalName', '.population']
+    * def cardId = response.cards[0].id
+    * eval leitnerCardFixtures.stageForCleanup(cardId)
+
+    Given path 'leitner/cards', cardId
+    When method get
+    Then status 200
+    * def getKeys = Object.keys(response.properties)
+    And match getKeys == ['#flag', '_canonicalName', '.population']
+
   Scenario: Reject creation with a missing deck id
     Given path 'leitner/cards'
     And request { cards: [{ properties: { _canonicalName: 'France' } }] }

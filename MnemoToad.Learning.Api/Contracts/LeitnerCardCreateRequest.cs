@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Nodes;
 
 namespace MnemoToad.Learning.Api.Contracts;
 
@@ -11,6 +12,7 @@ namespace MnemoToad.Learning.Api.Contracts;
 /// Key/value pairs keyed by Knowledge property-path string (see architecture docs §3 Path DSL:
 /// <c>_name</c> for a node column, <c>.name</c> for an attribute, <c>#name</c> for media). Each
 /// value is exactly what that path resolves to in Knowledge, so a card's properties can be copied
-/// straight out of a Knowledge lookup with no reshaping. Must contain at least one entry.
+/// straight out of a Knowledge lookup with no reshaping. Must contain at least one entry, in the
+/// order they should be presented — that order is preserved through storage and every response.
 /// </param>
-public record LeitnerCardCreateRequest(Guid? NodeId, [Required, MinLength(1)] Dictionary<string, object?> Properties);
+public record LeitnerCardCreateRequest(Guid? NodeId, [Required, MinLength(1)] JsonObject Properties);

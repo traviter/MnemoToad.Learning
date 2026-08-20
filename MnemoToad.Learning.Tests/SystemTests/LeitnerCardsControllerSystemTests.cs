@@ -1,21 +1,19 @@
 using Microsoft.AspNetCore.Mvc;
 using MnemoToad.Learning.Api.Contracts;
+using MnemoToad.Learning.Data.Entities;
 using MnemoToad.Learning.Tests.TestSupport;
 using NUnit.Framework;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json.Nodes;
 
 namespace MnemoToad.Learning.Tests.SystemTests;
 
-// Encodes the LeitnerCard API's target behavior against the real HTTP pipeline, per the approved
-// Swagger contract — LeitnerCardsController currently stubs every action with 501, so these are
-// expected to fail (red) until the persistence layer lands in a later phase. The one exception is
-// pure request-shape validation (missing/empty DeckId, empty Cards/Properties), which
-// [ApiController]'s automatic DataAnnotations check runs before the action body ever executes, so
-// those cases already pass today. LeitnerDeck setup seeds straight into the in-memory DB via
-// DbFixtures.CreateLeitnerDeckAsync (Deck is only a precondition here, not what's under test) —
-// same "setup-only preconditions skip HTTP" rule MnemoToad.Knowledge's system tests already follow.
+// Real HTTP requests through the full app pipeline. LeitnerDeck setup seeds straight into the
+// in-memory DB via DbFixtures.CreateLeitnerDeckAsync (Deck is only a precondition here, not what's
+// under test) — same "setup-only preconditions skip HTTP" rule MnemoToad.Knowledge's system tests
+// already follow.
 [TestFixture]
 public class LeitnerCardsControllerSystemTests
 {
@@ -48,11 +46,11 @@ public class LeitnerCardsControllerSystemTests
     public async Task Create_ThenGetById_RoundTripsPropertiesThroughTheRealStack()
     {
         var deck = await _factory.Db.CreateLeitnerDeckAsync();
-        var properties = new Dictionary<string, object?>
+        var properties = new JsonObject
         {
             ["_canonicalName"] = "France",
             [".population"] = 68000000,
-            ["#flag"] = new Dictionary<string, object?> { ["id"] = Guid.NewGuid().ToString(), ["alt_text"] = "The flag of France" }
+            ["#flag"] = new JsonObject { ["id"] = Guid.NewGuid().ToString(), ["alt_text"] = "The flag of France" }
         };
 
         var createResponse = await _client.PostAsJsonAsync("/leitner/cards", new LeitnerCardsBulkCreateRequest(
@@ -65,9 +63,33 @@ public class LeitnerCardsControllerSystemTests
         var getResponse = await _client.GetAsync($"/leitner/cards/{createdCard.Id}");
 
         Assert.That(getResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        var fetched = await getResponse.Content.ReadFromJsonAsync<LeitnerCardResponse>();
+        var fetched = await getResponse.Content.ReadFromJsonAsync<LeitnerCard>();
         Assert.That(fetched!.DeckId, Is.EqualTo(deck.Id));
         Assert.That(fetched.Properties["_canonicalName"]!.ToString(), Is.EqualTo("France"));
+    }
+
+    [Test]
+    public async Task Create_ThenGetById_PropertiesComeBackInSubmittedOrder()
+    {
+        var deck = await _factory.Db.CreateLeitnerDeckAsync();
+        var properties = new JsonObject
+        {
+            ["#flag"] = new JsonObject { ["id"] = Guid.NewGuid().ToString(), ["alt_text"] = "The flag of France" },
+            ["_canonicalName"] = "France",
+            [".population"] = 68000000
+        };
+
+        var createResponse = await _client.PostAsJsonAsync("/leitner/cards", new LeitnerCardsBulkCreateRequest(
+            deck.Id, new List<LeitnerCardCreateRequest> { new(NodeId: null, Properties: properties) }));
+        var created = await createResponse.Content.ReadFromJsonAsync<LeitnerCardsBulkCreateResponse>();
+        var createdCard = created!.Cards.Single();
+
+        Assert.That(createdCard.Properties.Select(p => p.Key), Is.EqualTo(new[] { "#flag", "_canonicalName", ".population" }));
+
+        var getResponse = await _client.GetAsync($"/leitner/cards/{createdCard.Id}");
+        var fetched = await getResponse.Content.ReadFromJsonAsync<LeitnerCard>();
+
+        Assert.That(fetched!.Properties.Select(p => p.Key), Is.EqualTo(new[] { "#flag", "_canonicalName", ".population" }));
     }
 
     [Test]
@@ -113,6 +135,19 @@ public class LeitnerCardsControllerSystemTests
     }
 
     [Test]
+    public async Task Create_WithExplicitNullNodeId_TreatedSameAsOmitted()
+    {
+        var deck = await _factory.Db.CreateLeitnerDeckAsync();
+        var json = $"{{\"deckId\":\"{deck.Id}\",\"cards\":[{{\"nodeId\":null,\"properties\":{{\"_canonicalName\":\"France\"}}}}]}}";
+
+        var response = await _client.PostAsync("/leitner/cards", new StringContent(json, Encoding.UTF8, "application/json"));
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+        var created = await response.Content.ReadFromJsonAsync<LeitnerCardsBulkCreateResponse>();
+        Assert.That(created!.Cards.Single().NodeId, Is.Null);
+    }
+
+    [Test]
     public async Task Create_WithMultipleCards_CreatesAllOfThemInTheSameDeck()
     {
         var deck = await _factory.Db.CreateLeitnerDeckAsync();
@@ -128,7 +163,7 @@ public class LeitnerCardsControllerSystemTests
         var created = await createResponse.Content.ReadFromJsonAsync<LeitnerCardsBulkCreateResponse>();
         Assert.That(created!.Cards, Has.Count.EqualTo(2));
         Assert.That(created.Cards.Select(c => c.Id), Is.Unique);
-        Assert.That(created.Cards, Has.All.Matches<LeitnerCardResponse>(c => c.DeckId == deck.Id));
+        Assert.That(created.Cards, Has.All.Matches<LeitnerCard>(c => c.DeckId == deck.Id));
     }
 
     [Test]
@@ -155,6 +190,18 @@ public class LeitnerCardsControllerSystemTests
     public async Task Create_WithMissingDeckId_Returns400WithValidationErrors()
     {
         var json = "{\"cards\":[{\"properties\":{\"_canonicalName\":\"France\"}}]}";
+
+        var response = await _client.PostAsync("/leitner/cards", new StringContent(json, Encoding.UTF8, "application/json"));
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        Assert.That(problem!.Errors, Contains.Key("DeckId"));
+    }
+
+    [Test]
+    public async Task Create_WithExplicitNullDeckId_Returns400WithValidationErrors()
+    {
+        var json = "{\"deckId\":null,\"cards\":[{\"properties\":{\"_canonicalName\":\"France\"}}]}";
 
         var response = await _client.PostAsync("/leitner/cards", new StringContent(json, Encoding.UTF8, "application/json"));
 
@@ -201,6 +248,32 @@ public class LeitnerCardsControllerSystemTests
     }
 
     [Test]
+    public async Task Create_WithMissingPropertiesOnACard_Returns400WithValidationErrors()
+    {
+        var deck = await _factory.Db.CreateLeitnerDeckAsync();
+        var json = $"{{\"deckId\":\"{deck.Id}\",\"cards\":[{{}}]}}";
+
+        var response = await _client.PostAsync("/leitner/cards", new StringContent(json, Encoding.UTF8, "application/json"));
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        Assert.That(problem!.Errors, Contains.Key("Cards[0].Properties"));
+    }
+
+    [Test]
+    public async Task Create_WithNullPropertiesOnACard_Returns400WithValidationErrors()
+    {
+        var deck = await _factory.Db.CreateLeitnerDeckAsync();
+        var json = $"{{\"deckId\":\"{deck.Id}\",\"cards\":[{{\"properties\":null}}]}}";
+
+        var response = await _client.PostAsync("/leitner/cards", new StringContent(json, Encoding.UTF8, "application/json"));
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        Assert.That(problem!.Errors, Contains.Key("Cards[0].Properties"));
+    }
+
+    [Test]
     public async Task GetByDeck_ReturnsOnlyCardsInThatDeck()
     {
         var deck1 = await _factory.Db.CreateLeitnerDeckAsync();
@@ -213,8 +286,8 @@ public class LeitnerCardsControllerSystemTests
         var response = await _client.GetAsync($"/leitner/cards?deckId={deck1.Id}");
 
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        var cards = await response.Content.ReadFromJsonAsync<List<LeitnerCardResponse>>();
-        Assert.That(cards, Has.All.Matches<LeitnerCardResponse>(c => c.DeckId == deck1.Id));
+        var cards = await response.Content.ReadFromJsonAsync<List<LeitnerCard>>();
+        Assert.That(cards, Has.All.Matches<LeitnerCard>(c => c.DeckId == deck1.Id));
     }
 
     [Test]
@@ -225,7 +298,7 @@ public class LeitnerCardsControllerSystemTests
         var response = await _client.GetAsync($"/leitner/cards?deckId={deck.Id}");
 
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        var cards = await response.Content.ReadFromJsonAsync<List<LeitnerCardResponse>>();
+        var cards = await response.Content.ReadFromJsonAsync<List<LeitnerCard>>();
         Assert.That(cards, Is.Empty);
     }
 
@@ -264,7 +337,7 @@ public class LeitnerCardsControllerSystemTests
             {
                 ["_canonicalName"] = "France",
                 [".population"] = 68000000,
-                ["#flag"] = new Dictionary<string, object?> { ["id"] = Guid.NewGuid().ToString(), ["alt_text"] = "The flag of France" }
+                ["#flag"] = new JsonObject { ["id"] = Guid.NewGuid().ToString(), ["alt_text"] = "The flag of France" }
             }) }));
         var created = await createResponse.Content.ReadFromJsonAsync<LeitnerCardsBulkCreateResponse>();
         var cardId = created!.Cards.Single().Id;

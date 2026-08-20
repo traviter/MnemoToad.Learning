@@ -87,7 +87,7 @@ public class ExampleSchemaFilter : ISchemaFilter
                     },
                 }),
         },
-        [typeof(LeitnerCardResponse)] = () => new JsonObject
+        [typeof(LeitnerCard)] = () => new JsonObject
         {
             ["id"] = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
             ["deckId"] = "8b1e2c3d-4a5b-6c7d-8e9f-0a1b2c3d4e5f",

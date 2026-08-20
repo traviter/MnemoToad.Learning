@@ -27,6 +27,7 @@ internal sealed class MockableAppDbContext : IAppDbContext
         _mock = new Mock<IAppDbContext>();
         _mock.Setup(db => db.SaveChangesAsync()).Returns(() => _wrapped.SaveChangesAsync());
         SetupDefaultExecuteDelete<LeitnerDeck>();
+        SetupDefaultExecuteDelete<LeitnerCard>();
     }
 
     private void SetupDefaultExecuteDelete<TEntity>() where TEntity : class =>
@@ -34,6 +35,8 @@ internal sealed class MockableAppDbContext : IAppDbContext
             .Returns<IQueryable<TEntity>>(query => _wrapped.ExecuteDeleteAsync(query));
 
     public DbSet<LeitnerDeck> LeitnerDeck => _wrapped.LeitnerDeck;
+    public DbSet<LeitnerCard> LeitnerCard => _wrapped.LeitnerCard;
+    public DbSet<LeitnerCardFace> LeitnerCardFace => _wrapped.LeitnerCardFace;
     public Task<int> SaveChangesAsync() => _mock.Object.SaveChangesAsync();
     public Task<int> ExecuteDeleteAsync<TEntity>(IQueryable<TEntity> query) where TEntity : class =>
         _mock.Object.ExecuteDeleteAsync(query);
