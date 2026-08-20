@@ -5,8 +5,18 @@ Feature: LeitnerDeck API
     * url baseUrl
     * def uniqueName = read('classpath:com/mnemotoad/learning/common/util.js')
     * def leitnerDeckFixtures = call read('fixtures.js')
+    * def leitnerCardFixtures = call read('classpath:com/mnemotoad/learning/leitnercard/fixtures.js')
     * def createLeitnerDeck = leitnerDeckFixtures.create
-    * configure afterScenario = leitnerDeckFixtures.cleanup
+    * def createLeitnerCard = leitnerCardFixtures.create
+    * configure afterScenario =
+      """
+      function(){
+        // LeitnerCards must be cleaned up before their referenced LeitnerDecks -- if a deck's own
+        // delete already cascaded them away, the leftover cleanup call just gets a harmless 404.
+        leitnerCardFixtures.cleanup();
+        leitnerDeckFixtures.cleanup();
+      }
+      """
 
   Scenario: Create a deck successfully
     * def name = uniqueName('LeitnerDeck')
@@ -110,5 +120,17 @@ Feature: LeitnerDeck API
     Then status 204
 
     Given path 'leitner/decks', created.response.id
+    When method get
+    Then status 404
+
+  Scenario: Delete a deck that still has cards cascades to delete them
+    * def deck = createLeitnerDeck()
+    * def card = createLeitnerCard({ deckId: deck.response.id, properties: { _canonicalName: 'France', '.population': 68000000 } })
+
+    Given path 'leitner/decks', deck.response.id
+    When method delete
+    Then status 204
+
+    Given path 'leitner/cards', card.response.id
     When method get
     Then status 404

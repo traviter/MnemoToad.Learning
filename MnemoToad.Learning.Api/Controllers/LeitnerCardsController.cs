@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using MnemoToad.Learning.Api.Contracts;
+using System.ComponentModel.DataAnnotations;
 
 namespace MnemoToad.Learning.Api.Controllers;
 
@@ -36,7 +37,7 @@ public class LeitnerCardsController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<LeitnerCardResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public IActionResult GetByDeck([FromQuery] Guid? deckId) =>
+    public IActionResult GetByDeck([FromQuery, Required] Guid? deckId) =>
         StatusCode(StatusCodes.Status501NotImplemented);
 
     /// <summary>Gets a single LeitnerCard by id.</summary>

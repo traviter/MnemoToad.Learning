@@ -7,4 +7,4 @@ namespace MnemoToad.Learning.Api.Contracts;
 /// <param name="Cards">The cards to create. Must contain at least one card.</param>
 public record LeitnerCardsBulkCreateRequest(
     [Required] Guid? DeckId,
-    [Required] IReadOnlyList<LeitnerCardCreateRequest> Cards);
+    [Required, MinLength(1)] IReadOnlyList<LeitnerCardCreateRequest> Cards);

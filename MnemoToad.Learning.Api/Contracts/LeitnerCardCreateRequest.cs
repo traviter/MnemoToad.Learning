@@ -13,4 +13,4 @@ namespace MnemoToad.Learning.Api.Contracts;
 /// value is exactly what that path resolves to in Knowledge, so a card's properties can be copied
 /// straight out of a Knowledge lookup with no reshaping. Must contain at least one entry.
 /// </param>
-public record LeitnerCardCreateRequest(Guid? NodeId, [Required] Dictionary<string, object?> Properties);
+public record LeitnerCardCreateRequest(Guid? NodeId, [Required, MinLength(1)] Dictionary<string, object?> Properties);

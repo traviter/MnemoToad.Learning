@@ -101,4 +101,25 @@ public class LeitnerDecksControllerSystemTests
         Assert.That(deleteResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
         Assert.That(await _factory.Db.LeitnerDeck.AsNoTracking().FirstOrDefaultAsync(d => d.Id == leitnerDeck.Id), Is.Null);
     }
+
+    // Red until LeitnerCard persistence exists at all, and likely to stay red even after that:
+    // per MnemoToad.Knowledge's precedent (see its CLAUDE.md, knowledge_node_media's ON DELETE
+    // CASCADE), a deck-to-card cascade is expected to live purely in the Postgres DbUp DDL, which
+    // this SQLite-backed MockableAppDbContext never enforces — only a real-Postgres Karate scenario
+    // (leitnerdeck.feature, "Delete a deck that still has cards cascades to delete them") can
+    // actually prove this works. Kept here anyway as the target behavior.
+    [Test]
+    public async Task Delete_WhenDeckHasCards_AlsoDeletesTheCards()
+    {
+        var deck = await _factory.Db.CreateLeitnerDeckAsync();
+        var createCardResponse = await _client.PostAsJsonAsync("/leitner/cards", new LeitnerCardsBulkCreateRequest(
+            deck.Id, new List<LeitnerCardCreateRequest> { new(NodeId: null, Properties: new() { ["_canonicalName"] = "France", [".population"] = 68000000 }) }));
+        var card = (await createCardResponse.Content.ReadFromJsonAsync<LeitnerCardsBulkCreateResponse>())!.Cards.Single();
+
+        var deleteResponse = await _client.DeleteAsync($"/leitner/decks/{deck.Id}");
+
+        Assert.That(deleteResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
+        var getCardResponse = await _client.GetAsync($"/leitner/cards/{card.Id}");
+        Assert.That(getCardResponse.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+    }
 }
