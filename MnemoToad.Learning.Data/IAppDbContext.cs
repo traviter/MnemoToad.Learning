@@ -8,6 +8,7 @@ public interface IAppDbContext : IDisposable
     DbSet<LeitnerDeck> LeitnerDeck { get; }
     DbSet<LeitnerCard> LeitnerCard { get; }
     DbSet<LeitnerCardFace> LeitnerCardFace { get; }
+    DbSet<LeitnerSchedule> LeitnerSchedule { get; }
 
     Task<int> SaveChangesAsync();
     Task<int> ExecuteDeleteAsync<TEntity>(IQueryable<TEntity> query) where TEntity : class;
