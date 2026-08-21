@@ -106,6 +106,47 @@ public class ExampleSchemaFilter : ISchemaFilter
                 },
             },
         },
+        [typeof(LeitnerQuizDueCardResponse)] = () => new JsonObject
+        {
+            ["id"] = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            ["boxNumber"] = 1,
+            ["properties"] = new JsonObject
+            {
+                ["_canonicalName"] = "France",
+                [".population"] = 68000000,
+                ["#flag"] = new JsonObject
+                {
+                    ["id"] = "a1b2c3d4-e5f6-4789-9abc-def012345678",
+                    ["alt_text"] = "The flag of France",
+                },
+            },
+        },
+        [typeof(IEnumerable<LeitnerQuizDueCardResponse>)] = () => new JsonArray(
+            new JsonObject
+            {
+                ["id"] = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                ["boxNumber"] = 1,
+                ["properties"] = new JsonObject
+                {
+                    ["_canonicalName"] = "France",
+                    [".population"] = 68000000,
+                    ["#flag"] = new JsonObject
+                    {
+                        ["id"] = "a1b2c3d4-e5f6-4789-9abc-def012345678",
+                        ["alt_text"] = "The flag of France",
+                    },
+                },
+            },
+            new JsonObject
+            {
+                ["id"] = "d4e5f6a7-8b9c-4d0e-9f1a-2b3c4d5e6f70",
+                ["boxNumber"] = 0,
+                ["properties"] = new JsonObject
+                {
+                    ["_canonicalName"] = "Japan",
+                    [".population"] = 123000000,
+                },
+            }),
     };
 
     public void Apply(IOpenApiSchema schema, SchemaFilterContext context)
