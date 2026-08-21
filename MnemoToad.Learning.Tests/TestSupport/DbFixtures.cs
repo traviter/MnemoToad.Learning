@@ -14,9 +14,9 @@ internal static class DbFixtures
         return leitnerDeck;
     }
 
-    public static async Task<LeitnerCard> CreateLeitnerCardAsync(this IAppDbContext db, Guid deckId, Guid? nodeId = null, JsonObject? properties = null)
+    public static async Task<LeitnerCard> CreateLeitnerCardAsync(this IAppDbContext db, Guid deckId, Guid? nodeId = null, JsonObject? properties = null, int boxNumber = 0, DateTime? dueUtc = null)
     {
-        var leitnerCard = new LeitnerCard { DeckId = deckId, NodeId = nodeId, BoxNumber = 0, DueUtc = DateTime.UtcNow };
+        var leitnerCard = new LeitnerCard { DeckId = deckId, NodeId = nodeId, BoxNumber = boxNumber, DueUtc = dueUtc ?? DateTime.UtcNow };
         db.LeitnerCard.Add(leitnerCard);
 
         properties ??= new JsonObject { ["_canonicalName"] = $"LeitnerCard_{Guid.NewGuid()}" };
