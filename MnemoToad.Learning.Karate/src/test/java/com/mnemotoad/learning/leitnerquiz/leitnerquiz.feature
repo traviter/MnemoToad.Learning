@@ -76,7 +76,7 @@ Feature: LeitnerQuiz API
     When method get
     Then status 200
     * def foundIds = karate.map(response, function(x){ return x.id })
-    And match foundIds.indexOf(card1.response.id) < foundIds.indexOf(card2.response.id)
+    And assert foundIds.indexOf(card1.response.id) < foundIds.indexOf(card2.response.id)
 
   Scenario: Properties come back in the order they were submitted
     * def deck = createLeitnerDeck()

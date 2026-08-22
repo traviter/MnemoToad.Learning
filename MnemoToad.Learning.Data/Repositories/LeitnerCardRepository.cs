@@ -27,7 +27,7 @@ public class LeitnerCardRepository : ILeitnerCardRepository
             keySelector: f => f.PropertyPath,
             createBlank: (cardId, path) => new LeitnerCardFace { LeitnerCardId = cardId, PropertyPath = path },
             applyValue: (face, content) =>
-                faceMapper.UpdateFromJson(face, new JsonObject { [face.PropertyPath] = content }));
+                faceMapper.UpdateFromJson(face, new JsonObject { [face.PropertyPath] = content?.DeepClone() }));
     }
 
     public async Task<List<LeitnerCard>> GetByDeckAsync(Guid deckId)
