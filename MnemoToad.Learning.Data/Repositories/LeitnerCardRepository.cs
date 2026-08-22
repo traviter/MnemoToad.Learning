@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using MnemoToad.Learning.Data.DbUtil;
 using MnemoToad.Learning.Data.Entities;
-using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Nodes;
 
 namespace MnemoToad.Learning.Data.Repositories;
@@ -9,32 +8,34 @@ namespace MnemoToad.Learning.Data.Repositories;
 public class LeitnerCardRepository : ILeitnerCardRepository
 {
     private readonly IAppDbContext _db;
+    private readonly IJsonMapper<IEnumerable<LeitnerCardFace>> _compositeFaceMapper;
+    private readonly ILeitnerCardFaceRepository _faceRepository;
     private readonly EntityCollectionSynchronizer<LeitnerCardFace, JsonNode?> _faceSync;
 
-    public LeitnerCardRepository(IAppDbContext db)
+    public LeitnerCardRepository(
+        IAppDbContext db,
+        IEntityJsonMapper<LeitnerCardFace> faceMapper,
+        IJsonMapper<IEnumerable<LeitnerCardFace>> compositeFaceMapper,
+        ILeitnerCardFaceRepository faceRepository)
     {
         _db = db;
+        _compositeFaceMapper = compositeFaceMapper;
+        _faceRepository = faceRepository;
 
         _faceSync = new EntityCollectionSynchronizer<LeitnerCardFace, JsonNode?>(
             dbSet: _db.LeitnerCardFace,
             keySelector: f => f.PropertyPath,
             createBlank: (cardId, path) => new LeitnerCardFace { LeitnerCardId = cardId, PropertyPath = path },
-            applyValue: (face, content) => face.Content = content ?? throw new ValidationException($"The property '{face.PropertyPath}' must have a value."));
+            applyValue: (face, content) =>
+                faceMapper.UpdateFromJson(face, new JsonObject { [face.PropertyPath] = content }));
     }
 
     public async Task<List<LeitnerCard>> GetByDeckAsync(Guid deckId)
     {
         var cards = await _db.LeitnerCard.Where(c => c.DeckId == deckId).ToListAsync();
-        var cardIds = cards.Select(c => c.Id).ToList();
-        var faces = await _db.LeitnerCardFace
-            .Where(f => cardIds.Contains(f.LeitnerCardId))
-            .OrderBy(f => f.LeitnerCardId).ThenBy(f => f.FaceIndex)
-            .ToListAsync();
-        var facesByCard = faces.ToLookup(f => f.LeitnerCardId);
-
+        var facesByCard = await _faceRepository.GetByCardsAsync(cards);
         foreach (var card in cards)
-            card.Properties = ToProperties(facesByCard[card.Id]);
-
+            card.Properties = _compositeFaceMapper.ToJson(facesByCard[card.Id]);
         return cards;
     }
 
@@ -43,8 +44,8 @@ public class LeitnerCardRepository : ILeitnerCardRepository
         var card = await _db.LeitnerCard.FindAsync(id);
         if (card is null) return null;
 
-        var faces = await _db.LeitnerCardFace.Where(f => f.LeitnerCardId == id).OrderBy(f => f.FaceIndex).ToListAsync();
-        card.Properties = ToProperties(faces);
+        var facesByCard = await _faceRepository.GetByCardIdsAsync(new List<Guid> { id });
+        card.Properties = _compositeFaceMapper.ToJson(facesByCard[id]);
         return card;
     }
 
@@ -65,12 +66,4 @@ public class LeitnerCardRepository : ILeitnerCardRepository
 
     public async Task<bool> DeleteAsync(Guid id) =>
         await _db.ExecuteDeleteAsync(_db.LeitnerCard.Where(c => c.Id == id)) > 0;
-
-    private static JsonObject ToProperties(IEnumerable<LeitnerCardFace> faces)
-    {
-        var properties = new JsonObject();
-        foreach (var face in faces)
-            properties[face.PropertyPath] = face.Content.DeepClone();
-        return properties;
-    }
 }
