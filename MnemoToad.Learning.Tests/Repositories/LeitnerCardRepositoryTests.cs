@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using MnemoToad.Learning.Data.DbUtil;
 using MnemoToad.Learning.Data.Entities;
+using MnemoToad.Learning.Data.Entities.Operations;
 using MnemoToad.Learning.Data.Repositories;
 using MnemoToad.Learning.Tests.TestSupport;
 using NUnit.Framework;
@@ -18,7 +20,12 @@ public class LeitnerCardRepositoryTests
     public void SetUp()
     {
         _db = new MockableAppDbContext();
-        _repository = new LeitnerCardRepository(_db);
+        var faceMapper = new LeitnerCardFaceJsonMapper();
+        _repository = new LeitnerCardRepository(
+            _db,
+            faceMapper,
+            new CompositeJsonMapper<LeitnerCardFace>(faceMapper),
+            new LeitnerCardFaceRepository(_db));
     }
 
     [TearDown]
