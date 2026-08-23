@@ -107,3 +107,59 @@ Feature: LeitnerQuiz API
     And param deckId = 'not-a-guid'
     When method get
     Then status 400
+
+  # Same DueUtc/BoxNumber limitation as above applies to answers -- box-transition/reschedule
+  # detail (jitter windows, box-vs-box-0 resets, explicit overrides) is covered by the C# system
+  # tests. This box's happy path relies on the real seeded schedule (box 1 = 24h interval), since
+  # Karate runs against a live environment where the DbUp seed script has actually executed.
+
+  Scenario: Reject an empty array of answers
+    Given path 'leitner/quiz/cards/answers'
+    And request []
+    When method post
+    Then status 400
+
+  Scenario: Reject an answer missing a card id
+    Given path 'leitner/quiz/cards/answers'
+    And request [{ correct: true }]
+    When method post
+    Then status 400
+
+  Scenario: Reject an answer missing correct
+    Given path 'leitner/quiz/cards/answers'
+    And request [{ cardId: java.util.UUID.randomUUID() + '' }]
+    When method post
+    Then status 400
+
+  Scenario: Reject a negative box number
+    Given path 'leitner/quiz/cards/answers'
+    And request [{ cardId: java.util.UUID.randomUUID() + '', correct: true, boxNumber: -1 }]
+    When method post
+    Then status 400
+
+  Scenario: Submit an answer for a card that does not exist
+    Given path 'leitner/quiz/cards/answers'
+    And request [{ cardId: java.util.UUID.randomUUID() + '', correct: true }]
+    When method post
+    Then status 404
+
+  Scenario: A correct answer moves a card out of box 0 and off the due list
+    * def deck = createLeitnerDeck()
+    * def card = createLeitnerCard({ deckId: deck.response.id })
+
+    Given path 'leitner/quiz/cards/answers'
+    And request [{ cardId: card.response.id, correct: true }]
+    When method post
+    Then status 204
+
+    Given path 'leitner/cards', card.response.id
+    When method get
+    Then status 200
+    And match response.boxNumber == 1
+
+    Given path 'leitner/quiz/due-cards'
+    And param deckId = deck.response.id
+    When method get
+    Then status 200
+    * def foundIds = karate.map(response, function(x){ return x.id })
+    And match foundIds !contains card.response.id

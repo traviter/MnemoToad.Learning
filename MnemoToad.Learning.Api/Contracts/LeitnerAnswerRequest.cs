@@ -9,10 +9,9 @@ namespace MnemoToad.Learning.Api.Contracts;
 /// An explicit Leitner box to set the card to, overriding the default box computation.
 /// Optional — when omitted, the resulting box is computed from <c>Correct</c>: the card's
 /// current box plus one if correct, or reset to zero if incorrect. When provided, this
-/// value is used as-is regardless of <c>Correct</c>. Either way, <c>Correct</c> still
-/// determines whether the card's last-correct timestamp is updated.
+/// value is used as-is regardless of <c>Correct</c>. Must be nonnegative.
 /// </param>
 public record LeitnerAnswerRequest(
     [Required] Guid? CardId,
     [Required] bool? Correct,
-    int? BoxNumber);
+    [Range(0, int.MaxValue)] int? BoxNumber);

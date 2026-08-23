@@ -47,7 +47,7 @@ public class LeitnerQuizController : ControllerBase
     /// box plus one when <c>Correct</c> is true, or zero when <c>Correct</c> is false. If
     /// <c>BoxNumber</c> is provided, it's used as-is instead. Either way, the card's due
     /// date is recomputed from the Leitner schedule for the resulting box, and its
-    /// last-correct timestamp is updated whenever <c>Correct</c> is true.
+    /// <c>LastReviewedUtc</c> timestamp is updated.
     /// </remarks>
     /// <param name="answers">The answers to apply. Must contain at least one entry.</param>
     /// <response code="204">Every answer was applied.</response>
