@@ -6,8 +6,8 @@ using System.ComponentModel.DataAnnotations;
 namespace MnemoToad.Learning.Api.Controllers;
 
 /// <summary>
-/// Quiz-taking endpoints — the study-session view over LeitnerCards, as opposed to the
-/// CRUD/authoring endpoints on <see cref="LeitnerCardsController"/>.
+/// Quiz-taking endpoints — reading due cards and submitting answers for them, as opposed
+/// to the CRUD/authoring endpoints on <see cref="LeitnerCardsController"/>.
 /// </summary>
 [ApiController]
 [Route("leitner/quiz")]
@@ -39,5 +39,33 @@ public class LeitnerQuizController : ControllerBase
         var cards = await _quizRepository.GetDueByDeckAsync(deckId!.Value);
         if (cards.Count == 0 && await _deckRepository.GetByIdAsync(deckId.Value) is null) return NotFound();
         return Ok(cards.Select(c => new LeitnerQuizDueCardResponse(c.Id, c.BoxNumber, c.Properties)));
+    }
+
+    /// <summary>Submits one or more answers, updating each card's Leitner box and rescheduling it.</summary>
+    /// <remarks>
+    /// For each answer: if <c>BoxNumber</c> is omitted, the card's box becomes its current
+    /// box plus one when <c>Correct</c> is true, or zero when <c>Correct</c> is false. If
+    /// <c>BoxNumber</c> is provided, it's used as-is instead. Either way, if the resulting box
+    /// exceeds the highest configured Leitner schedule box, it's clamped down to that box. The
+    /// card's due date is then recomputed from the schedule for the resulting box, and its
+    /// <c>LastReviewedUtc</c> timestamp is updated.
+    /// </remarks>
+    /// <param name="answers">The answers to apply. Must contain at least one entry.</param>
+    /// <response code="204">Every answer was applied.</response>
+    /// <response code="400"><c>answers</c> was empty, or an entry was missing <c>CardId</c>/<c>Correct</c>.</response>
+    /// <response code="404">One or more <c>CardId</c> doesn't match an existing LeitnerCard.</response>
+    [HttpPost("cards/answers")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SubmitAnswers([Required, MinLength(1)] IReadOnlyList<LeitnerAnswerRequest> answers)
+    {
+        var submissions = answers.Select(a => new LeitnerAnswerSubmission(a.CardId!.Value, a.Correct!.Value, a.BoxNumber)).ToList();
+        var result = await _quizRepository.SubmitAnswersAsync(submissions);
+        return result switch
+        {
+            SubmitAnswersResult.CardNotFound => NotFound(),
+            _ => NoContent()
+        };
     }
 }

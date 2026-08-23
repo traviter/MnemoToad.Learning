@@ -27,4 +27,12 @@ internal static class DbFixtures
         await db.SaveChangesAsync();
         return leitnerCard;
     }
+
+    public static async Task<LeitnerSchedule> CreateLeitnerScheduleAsync(this IAppDbContext db, int boxNumber, int intervalHours, int varianceHours)
+    {
+        var leitnerSchedule = new LeitnerSchedule { BoxNumber = boxNumber, IntervalHours = intervalHours, VarianceHours = varianceHours };
+        db.LeitnerSchedule.Add(leitnerSchedule);
+        await db.SaveChangesAsync();
+        return leitnerSchedule;
+    }
 }
