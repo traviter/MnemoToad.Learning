@@ -82,4 +82,43 @@ public class LeitnerQuizControllerTests
 
         Assert.That(result, Is.InstanceOf<NotFoundResult>());
     }
+
+    [Test]
+    public async Task SubmitAnswers_WhenSuccess_ReturnsNoContent()
+    {
+        _quizRepository.Setup(r => r.SubmitAnswersAsync(It.IsAny<IReadOnlyList<LeitnerAnswerSubmission>>()))
+            .ReturnsAsync(SubmitAnswersResult.Success);
+
+        var result = await _controller.SubmitAnswers(new List<LeitnerAnswerRequest> { new(Guid.NewGuid(), true, null) });
+
+        Assert.That(result, Is.InstanceOf<NoContentResult>());
+    }
+
+    [Test]
+    public async Task SubmitAnswers_WhenCardNotFound_ReturnsNotFound()
+    {
+        _quizRepository.Setup(r => r.SubmitAnswersAsync(It.IsAny<IReadOnlyList<LeitnerAnswerSubmission>>()))
+            .ReturnsAsync(SubmitAnswersResult.CardNotFound);
+
+        var result = await _controller.SubmitAnswers(new List<LeitnerAnswerRequest> { new(Guid.NewGuid(), true, null) });
+
+        Assert.That(result, Is.InstanceOf<NotFoundResult>());
+    }
+
+    [Test]
+    public async Task SubmitAnswers_MapsRequestsToSubmissions()
+    {
+        var cardId = Guid.NewGuid();
+        IReadOnlyList<LeitnerAnswerSubmission>? captured = null;
+        _quizRepository.Setup(r => r.SubmitAnswersAsync(It.IsAny<IReadOnlyList<LeitnerAnswerSubmission>>()))
+            .Callback<IReadOnlyList<LeitnerAnswerSubmission>>(s => captured = s)
+            .ReturnsAsync(SubmitAnswersResult.Success);
+
+        await _controller.SubmitAnswers(new List<LeitnerAnswerRequest> { new(cardId, false, 3) });
+
+        var submission = captured!.Single();
+        Assert.That(submission.CardId, Is.EqualTo(cardId));
+        Assert.That(submission.Correct, Is.False);
+        Assert.That(submission.BoxNumber, Is.EqualTo(3));
+    }
 }

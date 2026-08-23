@@ -45,22 +45,27 @@ public class LeitnerQuizController : ControllerBase
     /// <remarks>
     /// For each answer: if <c>BoxNumber</c> is omitted, the card's box becomes its current
     /// box plus one when <c>Correct</c> is true, or zero when <c>Correct</c> is false. If
-    /// <c>BoxNumber</c> is provided, it's used as-is instead. Either way, the card's due
-    /// date is recomputed from the Leitner schedule for the resulting box, and its
+    /// <c>BoxNumber</c> is provided, it's used as-is instead. Either way, if the resulting box
+    /// exceeds the highest configured Leitner schedule box, it's clamped down to that box. The
+    /// card's due date is then recomputed from the schedule for the resulting box, and its
     /// <c>LastReviewedUtc</c> timestamp is updated.
     /// </remarks>
     /// <param name="answers">The answers to apply. Must contain at least one entry.</param>
     /// <response code="204">Every answer was applied.</response>
-    /// <response code="400">
-    /// <c>answers</c> was empty, or an entry was missing <c>CardId</c>/<c>Correct</c>, or an
-    /// explicit <c>BoxNumber</c> was outside the configured schedule's range.
-    /// </response>
+    /// <response code="400"><c>answers</c> was empty, or an entry was missing <c>CardId</c>/<c>Correct</c>.</response>
     /// <response code="404">One or more <c>CardId</c> doesn't match an existing LeitnerCard.</response>
     [HttpPost("cards/answers")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status501NotImplemented)]
-    public Task<IActionResult> SubmitAnswers([Required, MinLength(1)] IReadOnlyList<LeitnerAnswerRequest> answers) =>
-        Task.FromResult<IActionResult>(StatusCode(StatusCodes.Status501NotImplemented));
+    public async Task<IActionResult> SubmitAnswers([Required, MinLength(1)] IReadOnlyList<LeitnerAnswerRequest> answers)
+    {
+        var submissions = answers.Select(a => new LeitnerAnswerSubmission(a.CardId!.Value, a.Correct!.Value, a.BoxNumber)).ToList();
+        var result = await _quizRepository.SubmitAnswersAsync(submissions);
+        return result switch
+        {
+            SubmitAnswersResult.CardNotFound => NotFound(),
+            _ => NoContent()
+        };
+    }
 }

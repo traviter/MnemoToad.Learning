@@ -337,7 +337,7 @@ public class LeitnerQuizControllerSystemTests
     }
 
     [Test]
-    public async Task SubmitAnswers_BoxNumberAboveHighestConfiguredBox_Returns400()
+    public async Task SubmitAnswers_ExplicitBoxNumberAboveHighestConfiguredBox_ClampsToHighestBox()
     {
         var deck = await _factory.Db.CreateLeitnerDeckAsync();
         var card = await _factory.Db.CreateLeitnerCardAsync(deck.Id, boxNumber: 1, dueUtc: DateTime.UtcNow.AddMinutes(-1));
@@ -347,9 +347,11 @@ public class LeitnerQuizControllerSystemTests
         await _factory.Db.CreateLeitnerScheduleAsync(boxNumber: 3, intervalHours: 168, varianceHours: 12);
 
         var response = await _client.PostAsJsonAsync("/leitner/quiz/cards/answers",
-            new List<LeitnerAnswerRequest> { new(card.Id, true, 4) });
+            new List<LeitnerAnswerRequest> { new(card.Id, true, 99) });
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
+        var fetched = await (await _client.GetAsync($"/leitner/cards/{card.Id}")).Content.ReadFromJsonAsync<LeitnerCard>();
+        Assert.That(fetched!.BoxNumber, Is.EqualTo(3));
     }
 
     [Test]
@@ -366,6 +368,27 @@ public class LeitnerQuizControllerSystemTests
         var dueCardsResponse = await _client.GetAsync($"/leitner/quiz/due-cards?deckId={deck.Id}");
         var dueCards = await dueCardsResponse.Content.ReadFromJsonAsync<List<LeitnerQuizDueCardResponse>>();
         Assert.That(dueCards!.Select(c => c.Id), Does.Not.Contain(card.Id));
+    }
+
+    [Test]
+    public async Task SubmitAnswers_CorrectAtHighestConfiguredBox_StaysAtHighestBox()
+    {
+        var deck = await _factory.Db.CreateLeitnerDeckAsync();
+        var card = await _factory.Db.CreateLeitnerCardAsync(deck.Id, boxNumber: 3, dueUtc: DateTime.UtcNow.AddMinutes(-1));
+        await _factory.Db.CreateLeitnerScheduleAsync(boxNumber: 0, intervalHours: 0, varianceHours: 0);
+        await _factory.Db.CreateLeitnerScheduleAsync(boxNumber: 1, intervalHours: 24, varianceHours: 2);
+        await _factory.Db.CreateLeitnerScheduleAsync(boxNumber: 2, intervalHours: 72, varianceHours: 6);
+        await _factory.Db.CreateLeitnerScheduleAsync(boxNumber: 3, intervalHours: 168, varianceHours: 12);
+        var beforeAnswer = DateTime.UtcNow;
+
+        var response = await _client.PostAsJsonAsync("/leitner/quiz/cards/answers",
+            new List<LeitnerAnswerRequest> { new(card.Id, true, null) });
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
+        var fetched = await (await _client.GetAsync($"/leitner/cards/{card.Id}")).Content.ReadFromJsonAsync<LeitnerCard>();
+        Assert.That(fetched!.BoxNumber, Is.EqualTo(3));
+        Assert.That(fetched.DueUtc, Is.GreaterThanOrEqualTo(beforeAnswer.AddHours(156)));
+        Assert.That(fetched.DueUtc, Is.LessThanOrEqualTo(DateTime.UtcNow.AddHours(180)));
     }
 
     [Test]

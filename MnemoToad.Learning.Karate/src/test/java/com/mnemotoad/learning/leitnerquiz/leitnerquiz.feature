@@ -163,3 +163,17 @@ Feature: LeitnerQuiz API
     Then status 200
     * def foundIds = karate.map(response, function(x){ return x.id })
     And match foundIds !contains card.response.id
+
+  Scenario: An explicit box number above the highest configured box is clamped to it
+    * def deck = createLeitnerDeck()
+    * def card = createLeitnerCard({ deckId: deck.response.id })
+
+    Given path 'leitner/quiz/cards/answers'
+    And request [{ cardId: card.response.id, correct: true, boxNumber: 999 }]
+    When method post
+    Then status 204
+
+    Given path 'leitner/cards', card.response.id
+    When method get
+    Then status 200
+    And match response.boxNumber == 8
