@@ -13,6 +13,7 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<LeitnerDeck> LeitnerDeck => Set<LeitnerDeck>();
     public DbSet<LeitnerCard> LeitnerCard => Set<LeitnerCard>();
     public DbSet<LeitnerCardFace> LeitnerCardFace => Set<LeitnerCardFace>();
+    public DbSet<LeitnerSchedule> LeitnerSchedule => Set<LeitnerSchedule>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
