@@ -147,6 +147,28 @@ public class ExampleSchemaFilter : ISchemaFilter
                     [".population"] = 123000000,
                 },
             }),
+        [typeof(LeitnerAnswerRequest)] = () => new JsonObject
+        {
+            ["cardId"] = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            ["correct"] = true,
+        },
+        [typeof(IEnumerable<LeitnerAnswerRequest>)] = () => new JsonArray(
+            new JsonObject
+            {
+                ["cardId"] = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                ["correct"] = true,
+            },
+            new JsonObject
+            {
+                ["cardId"] = "d4e5f6a7-8b9c-4d0e-9f1a-2b3c4d5e6f70",
+                ["correct"] = false,
+            },
+            new JsonObject
+            {
+                ["cardId"] = "a1b2c3d4-e5f6-4789-9abc-def012345678",
+                ["correct"] = true,
+                ["boxNumber"] = 3,
+            }),
     };
 
     public void Apply(IOpenApiSchema schema, SchemaFilterContext context)
