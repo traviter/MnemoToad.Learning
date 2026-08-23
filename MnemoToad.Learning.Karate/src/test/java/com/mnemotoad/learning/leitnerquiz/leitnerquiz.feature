@@ -127,19 +127,19 @@ Feature: LeitnerQuiz API
 
   Scenario: Reject an answer missing correct
     Given path 'leitner/quiz/cards/answers'
-    And request [{ cardId: java.util.UUID.randomUUID() + '' }]
+    And request [{ cardId: '#(java.util.UUID.randomUUID() + "")' }]
     When method post
     Then status 400
 
   Scenario: Reject a negative box number
     Given path 'leitner/quiz/cards/answers'
-    And request [{ cardId: java.util.UUID.randomUUID() + '', correct: true, boxNumber: -1 }]
+    And request [{ cardId: '#(java.util.UUID.randomUUID() + "")', correct: true, boxNumber: -1 }]
     When method post
     Then status 400
 
   Scenario: Submit an answer for a card that does not exist
     Given path 'leitner/quiz/cards/answers'
-    And request [{ cardId: java.util.UUID.randomUUID() + '', correct: true }]
+    And request [{ cardId: '#(java.util.UUID.randomUUID() + "")', correct: true }]
     When method post
     Then status 404
 
@@ -148,7 +148,7 @@ Feature: LeitnerQuiz API
     * def card = createLeitnerCard({ deckId: deck.response.id })
 
     Given path 'leitner/quiz/cards/answers'
-    And request [{ cardId: card.response.id, correct: true }]
+    And request [{ cardId: '#(card.response.id)', correct: true }]
     When method post
     Then status 204
 
@@ -169,7 +169,7 @@ Feature: LeitnerQuiz API
     * def card = createLeitnerCard({ deckId: deck.response.id })
 
     Given path 'leitner/quiz/cards/answers'
-    And request [{ cardId: card.response.id, correct: true, boxNumber: 999 }]
+    And request [{ cardId: '#(card.response.id)', correct: true, boxNumber: 999 }]
     When method post
     Then status 204
 
